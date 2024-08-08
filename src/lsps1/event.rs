@@ -9,8 +9,11 @@
 
 //! Contains LSPS1 event types
 
-use super::msgs::{ChannelInfo, OptionsSupported, OrderId, OrderParams, PaymentInfo};
+#[cfg(lsps1_service)]
+use super::msgs::OrderId;
+use super::msgs::{ChannelInfo, OptionsSupported, OrderParams, PaymentInfo};
 
+#[cfg(lsps1_service)]
 use crate::lsps0::ser::RequestId;
 use crate::prelude::String;
 
@@ -67,6 +70,7 @@ pub enum LSPS1ClientEvent {
 }
 
 /// An event which an LSPS1 server should take some action in response to.
+#[cfg(lsps1_service)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LSPS1ServiceEvent {
 	/// A client has selected the parameters to use from the supported options of the LSP

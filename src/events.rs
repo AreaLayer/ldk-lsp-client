@@ -99,6 +99,7 @@ pub enum Event {
 	/// An LSPS1 (Channel Request) client event.
 	LSPS1Client(lsps1::event::LSPS1ClientEvent),
 	/// An LSPS1 (Channel Request) server event.
+	#[cfg(lsps1_service)]
 	LSPS1Service(lsps1::event::LSPS1ServiceEvent),
 	/// An LSPS2 (JIT Channel) client event.
 	LSPS2Client(lsps2::event::LSPS2ClientEvent),
