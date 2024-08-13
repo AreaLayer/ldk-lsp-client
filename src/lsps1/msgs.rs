@@ -1,11 +1,13 @@
 //! Message, request, and other primitive types used to implement LSPS1.
 
-use crate::lsps0::ser::{string_amount, u32_fee_rate, LSPSMessage, RequestId, ResponseError};
+use crate::lsps0::ser::{
+	string_amount, u32_fee_rate, unchecked_address, unchecked_address_option, LSPSMessage,
+	RequestId, ResponseError,
+};
 
 use crate::prelude::String;
 
-use bitcoin::address::{Address, NetworkUnchecked};
-use bitcoin::{FeeRate, OutPoint};
+use bitcoin::{Address, FeeRate, OutPoint};
 
 use lightning_invoice::Bolt11Invoice;
 
@@ -106,7 +108,8 @@ pub struct OrderParameters {
 	/// May contain arbitrary associated data like a coupon code or a authentication token.
 	pub token: Option<String>,
 	/// The address where the LSP will send the funds if the order fails.
-	pub refund_onchain_address: Option<Address<NetworkUnchecked>>,
+	#[serde(with = "unchecked_address_option")]
+	pub refund_onchain_address: Option<Address>,
 	/// Indicates if the channel should be announced to the network.
 	pub announce_channel: bool,
 }
@@ -182,7 +185,8 @@ pub struct OnchainPaymentInfo {
 	pub order_total_sat: u64,
 	/// An on-chain address the client can send [`Self::order_total_sat`] to to have the channel
 	/// opened.
-	pub address: Address<NetworkUnchecked>,
+	#[serde(with = "unchecked_address")]
+	pub address: Address,
 	/// The minimum number of block confirmations that are required for the on-chain payment to be
 	/// considered confirmed.
 	pub min_onchain_payment_confirmations: Option<u16>,

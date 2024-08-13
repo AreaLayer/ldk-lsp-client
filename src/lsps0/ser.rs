@@ -633,6 +633,63 @@ pub(crate) mod string_amount_option {
 	}
 }
 
+pub(crate) mod unchecked_address {
+	use crate::prelude::{String, ToString};
+	use bitcoin::Address;
+	use core::str::FromStr;
+	use serde::de::Unexpected;
+	use serde::{Deserialize, Deserializer, Serializer};
+
+	pub(crate) fn serialize<S>(x: &Address, s: S) -> Result<S::Ok, S::Error>
+	where
+		S: Serializer,
+	{
+		s.serialize_str(&x.to_string())
+	}
+
+	pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Address, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		let buf = String::deserialize(deserializer)?;
+
+		let parsed_addr = Address::from_str(&buf).map_err(|_| {
+			serde::de::Error::invalid_value(Unexpected::Str(&buf), &"invalid address string")
+		})?;
+		Ok(parsed_addr.assume_checked())
+	}
+}
+
+pub(crate) mod unchecked_address_option {
+	use crate::prelude::{String, ToString};
+	use bitcoin::Address;
+	use core::str::FromStr;
+	use serde::de::Unexpected;
+	use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+	pub(crate) fn serialize<S>(x: &Option<Address>, s: S) -> Result<S::Ok, S::Error>
+	where
+		S: Serializer,
+	{
+		let v = x.as_ref().map(|v| v.to_string());
+		Option::<String>::serialize(&v, s)
+	}
+
+	pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Option<bitcoin::Address>, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		if let Some(buf) = Option::<String>::deserialize(deserializer)? {
+			let val = Address::from_str(&buf).map_err(|_| {
+				serde::de::Error::invalid_value(Unexpected::Str(&buf), &"invalid address string")
+			})?;
+			Ok(Some(val.assume_checked()))
+		} else {
+			Ok(None)
+		}
+	}
+}
+
 pub(crate) mod u32_fee_rate {
 	use bitcoin::FeeRate;
 	use serde::{Deserialize, Deserializer, Serializer};
