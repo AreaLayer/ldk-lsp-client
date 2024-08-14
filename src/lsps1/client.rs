@@ -27,6 +27,7 @@ use lightning::util::errors::APIError;
 use lightning::util::logger::Level;
 
 use bitcoin::secp256k1::PublicKey;
+use bitcoin::Address;
 
 use core::ops::Deref;
 
@@ -189,6 +190,7 @@ where
 	/// The client agrees to paying channel fees according to the provided parameters.
 	pub fn create_order(
 		&self, counterparty_node_id: &PublicKey, order: OrderParameters,
+		refund_onchain_address: Option<Address>,
 	) -> RequestId {
 		let (request_id, request_msg) = {
 			let mut outer_state_lock = self.per_peer_state.write().unwrap();
@@ -198,7 +200,8 @@ where
 			let mut peer_state_lock = inner_state_lock.lock().unwrap();
 
 			let request_id = crate::utils::generate_request_id(&self.entropy_source);
-			let request = LSPS1Request::CreateOrder(CreateOrderRequest { order });
+			let request =
+				LSPS1Request::CreateOrder(CreateOrderRequest { order, refund_onchain_address });
 			let msg = LSPS1Message::Request(request_id.clone(), request).into();
 			peer_state_lock.pending_create_order_requests.insert(request_id.clone());
 

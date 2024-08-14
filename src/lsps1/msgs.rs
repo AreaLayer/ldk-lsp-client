@@ -85,6 +85,11 @@ pub struct CreateOrderRequest {
 	/// The order made.
 	#[serde(flatten)]
 	pub order: OrderParameters,
+	/// The address where the LSP will send the funds if the order fails.
+	#[serde(default)]
+	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(with = "unchecked_address_option")]
+	pub refund_onchain_address: Option<Address>,
 }
 
 /// An object representing an LSPS1 channel order.
@@ -107,9 +112,6 @@ pub struct OrderParameters {
 	pub channel_expiry_blocks: u32,
 	/// May contain arbitrary associated data like a coupon code or a authentication token.
 	pub token: Option<String>,
-	/// The address where the LSP will send the funds if the order fails.
-	#[serde(with = "unchecked_address_option")]
-	pub refund_onchain_address: Option<Address>,
 	/// Indicates if the channel should be announced to the network.
 	pub announce_channel: bool,
 }
@@ -194,6 +196,11 @@ pub struct OnchainPaymentInfo {
 	/// confirmed without a confirmation.
 	#[serde(with = "u32_fee_rate")]
 	pub min_fee_for_0conf: FeeRate,
+	/// The address where the LSP will send the funds if the order fails.
+	#[serde(default)]
+	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(with = "unchecked_address_option")]
+	pub refund_onchain_address: Option<Address>,
 }
 
 /// The state of a BOLT 11 payment.
@@ -445,9 +452,10 @@ mod tests {
 					"expires_at": "2015-01-25T19:29:44.612Z",
 					"fee_total_sat": "9999",
 					"order_total_sat": "2009999",
-					"address": "bc1qvmsy0f3yyes6z9jvddk8xqwznndmdwapvrc0xrmhd3vqj5rhdrrq6hz49h",
+					"address" : "bc1p5uvtaxzkjwvey2tfy49k5vtqfpjmrgm09cvs88ezyy8h2zv7jhas9tu4yr",
 					"min_fee_for_0conf": 253,
-					"min_onchain_payment_confirmations": 0
+					"min_onchain_payment_confirmations": 0,
+					"refund_onchain_address": "bc1qvmsy0f3yyes6z9jvddk8xqwznndmdwapvrc0xrmhd3vqj5rhdrrq6hz49h"
 				}
 			},
 			"channel": null
