@@ -159,7 +159,7 @@ pub struct PaymentInfo {
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Bolt11PaymentInfo {
 	/// Indicates the current state of the payment.
-	pub state: Bolt11PaymentState,
+	pub state: PaymentState,
 	/// The datetime when the payment option expires.
 	pub expires_at: chrono::DateTime<Utc>,
 	/// The total fee the LSP will charge to open this channel in satoshi.
@@ -176,7 +176,7 @@ pub struct Bolt11PaymentInfo {
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct OnchainPaymentInfo {
 	/// Indicates the current state of the payment.
-	pub state: OnchainPaymentState,
+	pub state: PaymentState,
 	/// The datetime when the payment option expires.
 	pub expires_at: chrono::DateTime<Utc>,
 	/// The total fee the LSP will charge to open this channel in satoshi.
@@ -203,31 +203,19 @@ pub struct OnchainPaymentInfo {
 	pub refund_onchain_address: Option<Address>,
 }
 
-/// The state of a BOLT 11 payment.
+/// The state of a payment.
+///
+/// *Note*: Previously, the spec also knew a `CANCELLED` state for BOLT11 payments, which has since
+/// been deprecated and `REFUNDED` should be used instead.
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum Bolt11PaymentState {
-	/// A payment is expected.
-	ExpectPayment,
-	/// A Lighting payment has arrived, but the preimage has not been released yet.
-	Hold,
-	/// A sufficient payment has been received.
-	Paid,
-	/// The payment has been refunded.
-	Refunded,
-	/// The payment has been cancelled.
-	Cancelled,
-}
-
-/// The state of an onchain payment.
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum OnchainPaymentState {
+pub enum PaymentState {
 	/// A payment is expected.
 	ExpectPayment,
 	/// A sufficient payment has been received.
 	Paid,
 	/// The payment has been refunded.
+	#[serde(alias = "CANCELLED")]
 	Refunded,
 }
 
@@ -473,5 +461,13 @@ mod tests {
 			"expires_at": "2012-04-23T18:25:43.511Z"
 		}"#;
 		let _channel: ChannelInfo = serde_json::from_str(json_str).unwrap();
+
+		let json_str = r#""CANCELLED""#;
+		let payment_state: PaymentState = serde_json::from_str(json_str).unwrap();
+		assert_eq!(payment_state, PaymentState::Refunded);
+
+		let json_str = r#""REFUNDED""#;
+		let payment_state: PaymentState = serde_json::from_str(json_str).unwrap();
+		assert_eq!(payment_state, PaymentState::Refunded);
 	}
 }
