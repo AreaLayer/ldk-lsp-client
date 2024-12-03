@@ -12,7 +12,7 @@
 use super::event::LSPS1ServiceEvent;
 use super::msgs::{
 	ChannelInfo, CreateOrderRequest, CreateOrderResponse, GetInfoResponse, GetOrderRequest,
-	LSPS1Message, LSPS1Request, LSPS1Response, OptionsSupported, OrderId, OrderParams, OrderState,
+	LSPS1Message, LSPS1Options, LSPS1Request, LSPS1Response, OrderId, OrderParameters, OrderState,
 	PaymentInfo, LSPS1_CREATE_ORDER_REQUEST_ORDER_MISMATCH_ERROR_CODE,
 };
 use super::utils::is_valid;
@@ -42,7 +42,7 @@ pub struct LSPS1ServiceConfig {
 	/// A token to be send with each channel request.
 	pub token: Option<String>,
 	/// The options supported by the LSP.
-	pub options_supported: Option<OptionsSupported>,
+	pub supported_options: Option<LSPS1Options>,
 }
 
 struct ChannelStateError(String);
@@ -72,9 +72,8 @@ impl OutboundRequestState {
 }
 
 struct OutboundLSPS1Config {
-	order: OrderParams,
+	order: OrderParameters,
 	created_at: chrono::DateTime<Utc>,
-	expires_at: chrono::DateTime<Utc>,
 	payment: PaymentInfo,
 }
 
@@ -85,12 +84,12 @@ struct OutboundCRChannel {
 
 impl OutboundCRChannel {
 	fn new(
-		order: OrderParams, created_at: chrono::DateTime<Utc>, expires_at: chrono::DateTime<Utc>,
-		order_id: OrderId, payment: PaymentInfo,
+		order: OrderParameters, created_at: chrono::DateTime<Utc>, order_id: OrderId,
+		payment: PaymentInfo,
 	) -> Self {
 		Self {
 			state: OutboundRequestState::OrderCreated { order_id },
-			config: OutboundLSPS1Config { order, created_at, expires_at, payment },
+			config: OutboundLSPS1Config { order, created_at, payment },
 		}
 	}
 	fn awaiting_payment(&mut self) -> Result<(), LightningError> {
@@ -98,10 +97,10 @@ impl OutboundCRChannel {
 		Ok(())
 	}
 
-	fn check_order_validity(&self, options_supported: &OptionsSupported) -> bool {
+	fn check_order_validity(&self, supported_options: &LSPS1Options) -> bool {
 		let order = &self.config.order;
 
-		is_valid(order, options_supported)
+		is_valid(order, supported_options)
 	}
 }
 
@@ -171,7 +170,7 @@ where
 		let response = LSPS1Response::GetInfo(GetInfoResponse {
 			options: self
 				.config
-				.options_supported
+				.supported_options
 				.clone()
 				.ok_or(LightningError {
 					err: format!("Configuration for LSP server not set."),
@@ -188,13 +187,13 @@ where
 	fn handle_create_order_request(
 		&self, request_id: RequestId, counterparty_node_id: &PublicKey, params: CreateOrderRequest,
 	) -> Result<(), LightningError> {
-		if !is_valid(&params.order, &self.config.options_supported.as_ref().unwrap()) {
+		if !is_valid(&params.order, &self.config.supported_options.as_ref().unwrap()) {
 			let response = LSPS1Response::CreateOrderError(ResponseError {
 				code: LSPS1_CREATE_ORDER_REQUEST_ORDER_MISMATCH_ERROR_CODE,
 				message: format!("Order does not match options supported by LSP server"),
 				data: Some(format!(
 					"Supported options are {:?}",
-					&self.config.options_supported.as_ref().unwrap()
+					&self.config.supported_options.as_ref().unwrap()
 				)),
 			});
 			let msg = LSPS1Message::Response(request_id, response).into();
@@ -239,7 +238,7 @@ where
 	/// [`LSPS1ServiceEvent::RequestForPaymentDetails`]: crate::lsps1::event::LSPS1ServiceEvent::RequestForPaymentDetails
 	pub fn send_payment_details(
 		&self, request_id: RequestId, counterparty_node_id: &PublicKey, payment: PaymentInfo,
-		created_at: chrono::DateTime<Utc>, expires_at: chrono::DateTime<Utc>,
+		created_at: chrono::DateTime<Utc>,
 	) -> Result<(), APIError> {
 		let (result, response) = {
 			let outer_state_lock = self.per_peer_state.read().unwrap();
@@ -254,7 +253,6 @@ where
 							let channel = OutboundCRChannel::new(
 								params.order.clone(),
 								created_at.clone(),
-								expires_at.clone(),
 								order_id.clone(),
 								payment.clone(),
 							);
@@ -266,7 +264,6 @@ where
 								order_id,
 								order_state: OrderState::Created,
 								created_at,
-								expires_at,
 								payment,
 								channel: None,
 							});
@@ -386,7 +383,6 @@ where
 							order: config.order.clone(),
 							order_state,
 							created_at: config.created_at,
-							expires_at: config.expires_at,
 							payment: config.payment.clone(),
 							channel,
 						});
